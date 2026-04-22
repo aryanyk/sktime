@@ -57,8 +57,9 @@ class RBFForecaster(BaseDeepNetworkPyTorch):
         - "gaussian": :math:`\exp(-\gamma (t - c)^2)`
         - "multiquadric": :math:`\sqrt{1 + \gamma (t - c)^2}`
         - "inverse_multiquadric": :math:`\frac{1}{\sqrt{1 + \gamma (t - c)^2}}`
-    hidden_layers : list of int, optional (default=[64, 32])
+    hidden_layers : list of int, optional (default=None)
         Sizes of linear layers following the RBF layer.
+        If None, defaults internally to [64, 32].
     optimizer : {"adam", "sgd", "rmsprop"}, optional (default="adam")
         Type of optimizer to use.
     lr : float, optional (default=0.01)
@@ -114,7 +115,7 @@ class RBFForecaster(BaseDeepNetworkPyTorch):
         centers=None,
         gamma=1.0,
         rbf_type="gaussian",
-        hidden_layers=[64, 32],
+        hidden_layers=None,
         optimizer="adam",
         lr=0.01,
         epochs=100,
@@ -127,7 +128,6 @@ class RBFForecaster(BaseDeepNetworkPyTorch):
         dropout_rate=0.1,
     ):
         super().__init__()
-
         self.window_length = window_length
         self.hidden_size = hidden_size
         self.batch_size = batch_size
@@ -180,6 +180,18 @@ class RBFForecaster(BaseDeepNetworkPyTorch):
                 device = "cpu"
         return torch.device(device)
 
+    def _get_hidden_layers(self):
+        """Resolve hidden layer sizes from constructor parameter."""
+        if self.hidden_layers is None:
+            return [64, 32]
+        if not isinstance(self.hidden_layers, (list, tuple)):
+            raise TypeError(
+                "hidden_layers must be a list or tuple of positive integers"
+            )
+        if not all(isinstance(x, int) and x > 0 for x in self.hidden_layers):
+            raise ValueError("hidden_layers must contain only positive integers")
+        return list(self.hidden_layers)
+
     def _build_network(self, fh):
         """Build the RBF network architecture.
 
@@ -197,7 +209,7 @@ class RBFForecaster(BaseDeepNetworkPyTorch):
             centers=self.centers,
             gamma=self.gamma,
             rbf_type=self.rbf_type,
-            hidden_layers=self.hidden_layers,
+            hidden_layers=self._get_hidden_layers(),
             mode=self.mode,
             activation=self.activation,
             dropout_rate=self.dropout_rate,
