@@ -135,6 +135,18 @@ class RBFForecaster(BaseDeepNetworkPyTorch):
         self.gamma = gamma
         self.rbf_type = rbf_type
         self.hidden_layers = hidden_layers
+
+        if hidden_layers is None:
+            self._hidden_layers = [64, 32]
+        elif not isinstance(hidden_layers, (list, tuple)):
+            raise TypeError(
+                "hidden_layers must be a list or tuple of positive integers"
+            )
+        elif not all(isinstance(x, int) and x > 0 for x in hidden_layers):
+            raise ValueError("hidden_layers must contain only positive integers")
+        else:
+            self._hidden_layers = list(hidden_layers)
+
         self.optimizer = optimizer
         self.lr = lr
         self.epochs = epochs
@@ -180,18 +192,6 @@ class RBFForecaster(BaseDeepNetworkPyTorch):
                 device = "cpu"
         return torch.device(device)
 
-    def _get_hidden_layers(self):
-        """Resolve hidden layer sizes from constructor parameter."""
-        if self.hidden_layers is None:
-            return [64, 32]
-        if not isinstance(self.hidden_layers, (list, tuple)):
-            raise TypeError(
-                "hidden_layers must be a list or tuple of positive integers"
-            )
-        if not all(isinstance(x, int) and x > 0 for x in self.hidden_layers):
-            raise ValueError("hidden_layers must contain only positive integers")
-        return list(self.hidden_layers)
-
     def _build_network(self, fh):
         """Build the RBF network architecture.
 
@@ -209,7 +209,7 @@ class RBFForecaster(BaseDeepNetworkPyTorch):
             centers=self.centers,
             gamma=self.gamma,
             rbf_type=self.rbf_type,
-            hidden_layers=self._get_hidden_layers(),
+            hidden_layers=self._hidden_layers,
             mode=self.mode,
             activation=self.activation,
             dropout_rate=self.dropout_rate,
@@ -549,7 +549,7 @@ class RBFForecaster(BaseDeepNetworkPyTorch):
         return loss_fns[self.criterion.lower()]()
 
     @classmethod
-    def get_test_params(cls):
+    def get_test_params(cls, parameter_set="default"):
         """Return testing parameter settings for the estimator.
 
         Provide example parameters for unit testing or experimentation.
@@ -566,7 +566,6 @@ class RBFForecaster(BaseDeepNetworkPyTorch):
                 "batch_size": 16,
                 "gamma": 1.0,
                 "rbf_type": "gaussian",
-                "hidden_layers": [16],
                 "epochs": 3,
                 "lr": 0.01,
                 "stride": 1,
